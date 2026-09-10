@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "mail-slyxup-online",
+  "account_id": "82c4f4b23dd3b5e81502a03d73cfe8a3",
+  "name": "mail-slyxup-com",
   "main": "./worker.ts",
   "compatibility_date": "2026-09-10",
   "assets": {
@@ -9,7 +10,7 @@
     "not_found_handling": "single-page-application"
   },
   "routes": [{
-    "pattern": "mail.slyxup.online",
+    "pattern": "email.slyxup.com",
     "custom_domain": true
   }],
   "vars": { "APP_NAME": "SlyxUp Mail" }

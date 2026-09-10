@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "slyxup-email",
+  "account_id": "82c4f4b23dd3b5e81502a03d73cfe8a3",
+  "name": "slyxup-email-com",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-10",
   "compatibility_flags": ["nodejs_compat"],
@@ -9,25 +10,25 @@
   "vars": {
     "MAIL_ADMIN_EMAIL": "slyxup@gmail.com",
     "MAIL_ADMIN_NAME": "SlyxUp",
-    "MAIL_DOMAIN": "slyxup.online",
-    "FRONTEND_ORIGIN": "https://mail.slyxup.online"
+    "MAIL_DOMAIN": "slyxup.com",
+    "FRONTEND_ORIGIN": "https://email.slyxup.com"
   },
   "d1_databases": [{
     "binding": "DB",
-    "database_name": "slyxup_email",
-    "database_id": "31289ae7-1353-4d47-9f95-c888bf1d0fa3",
+    "database_name": "slyxup_email_v2",
+    "database_id": "fab6e5b0-347f-4e6d-be40-6006ccb86305",
     "migrations_dir": "migrations"
   }],
   "r2_buckets": [{
     "binding": "ATTACHMENTS",
-    "bucket_name": "slyxup-email-attachments"
+    "bucket_name": "slyxup-email-attachments-v2"
   }],
   "kv_namespaces": [{
     "binding": "RATE_LIMIT",
-    "id": "4f303110f1f34d7db043bc4828081fdc"
+    "id": "7a4a5d0f4c884b9fa38424dbff3e63a3"
   }],
   "routes": [{
-    "pattern": "mail-api.slyxup.online/*",
-    "zone_name": "slyxup.online"
+    "pattern": "mail-api.slyxup.com/*",
+    "zone_name": "slyxup.com"
   }]
 }

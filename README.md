@@ -1,6 +1,6 @@
 # SlyxUp Mail
 
-Private Gmail-style mailbox for `slyxup.online`.
+Private Gmail-style mailbox for `slyxup.com`.
 
 ## Structure
 
@@ -33,9 +33,14 @@ The local UI runs at `http://localhost:5173` and the API at `http://localhost:87
 2. Set `MAIL_ADMIN_PASSWORD_HASH` and `BREVO_API_KEY` with `wrangler secret put`.
 3. Apply the remote migration.
 4. Deploy the API Worker and the frontend Static Assets Worker.
-5. Set the `slyxup.online` catch-all Email Routing rule to the `slyxup-email` Worker.
+5. Set the `slyxup.com` catch-all Email Routing rule to the `slyxup-email-com` Worker.
 
-See `backend/wrangler.jsonc` and `frontend/.env.example` for deployment domains.
+Production domains:
+
+- Frontend: `https://email.slyxup.com`
+- API: `https://mail-api.slyxup.com`
+
+See `backend/wrangler.jsonc` and `frontend/.env.example` for deployment configuration.
 
 ## Move Email Routing to another domain
 
@@ -44,7 +49,7 @@ Replace `newdomain.com` with the Cloudflare zone you want to use:
 ```bash
 wrangler email routing enable newdomain.com
 wrangler email routing rules update newdomain.com catch-all \
-  --enabled true --action-type worker --action-value slyxup-email
+  --enabled true --action-type worker --action-value slyxup-email-com
 wrangler email sending enable newdomain.com
 ```
 
