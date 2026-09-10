@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview --port 4173",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name mail-slyxup-online --branch main --commit-dirty=true"
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "@slyxup/mail-shared": "file:../shared",
