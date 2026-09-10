@@ -1,0 +1,30 @@
+{
+  "name": "slyxup-mail-backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8787",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "deploy": "wrangler deploy",
+    "typegen": "wrangler types",
+    "db:migrate:local": "wrangler d1 migrations apply slyxup_email --local",
+    "db:migrate:remote": "wrangler d1 migrations apply slyxup_email --remote"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.4.3",
+    "@slyxup/mail-shared": "file:../shared",
+    "hono": "^4.7.2",
+    "postal-mime": "^2.4.4",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.8.19",
+    "@cloudflare/workers-types": "^5.20260908.1",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.8",
+    "wrangler": "^4.13.0"
+  }
+}

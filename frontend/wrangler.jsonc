@@ -1,0 +1,7 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mail-slyxup-online",
+  "compatibility_date": "2026-09-10",
+  "pages_build_output_dir": "./dist",
+  "vars": { "APP_NAME": "SlyxUp Mail" }
+}

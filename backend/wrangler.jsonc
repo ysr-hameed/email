@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "slyxup-email",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "vars": {
+    "MAIL_ADMIN_EMAIL": "slyxup@gmail.com",
+    "MAIL_ADMIN_NAME": "SlyxUp",
+    "MAIL_DOMAIN": "slyxup.online",
+    "FRONTEND_ORIGIN": "https://mail.slyxup.online"
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "slyxup_email",
+    "database_id": "31289ae7-1353-4d47-9f95-c888bf1d0fa3",
+    "migrations_dir": "migrations"
+  }],
+  "r2_buckets": [{
+    "binding": "ATTACHMENTS",
+    "bucket_name": "slyxup-email-attachments"
+  }],
+  "kv_namespaces": [{
+    "binding": "RATE_LIMIT",
+    "id": "4f303110f1f34d7db043bc4828081fdc"
+  }],
+  "routes": [{
+    "pattern": "mail-api.slyxup.online/*",
+    "zone_name": "slyxup.online"
+  }]
+}

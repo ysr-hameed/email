@@ -1,0 +1,23 @@
+{
+  "name": "slyxup-mail",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Private SlyxUp email workspace",
+  "workspaces": ["backend", "frontend", "shared"],
+  "scripts": {
+    "dev": "npm run dev:backend & npm run dev:frontend",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "npm --prefix backend run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "typecheck": "npm --prefix backend run typecheck && npm --prefix frontend run typecheck",
+    "test": "npm --prefix backend run test",
+    "db:migrate:local": "npm --prefix backend run db:migrate:local",
+    "db:migrate:remote": "npm --prefix backend run db:migrate:remote",
+    "deploy:backend": "npm --prefix backend run deploy",
+    "deploy:frontend": "npm --prefix frontend run deploy",
+    "deploy": "npm run build && npm run deploy:backend && npm run deploy:frontend"
+  },
+  "engines": { "node": ">=20" }
+}
