@@ -35,4 +35,9 @@ The local UI runs at `http://localhost:5173` and the API at `http://localhost:87
 4. Deploy the Worker and Pages app.
 5. Set the `slyxup.online` catch-all Email Routing rule to the `slyxup-email` Worker.
 
+If Cloudflare DNS write access is unavailable, add these DNS records manually in the `slyxup.online` zone:
+
+- `mail` CNAME to `mail-slyxup-online.pages.dev` (proxied)
+- `mail-api` CNAME to the deployed Worker custom-domain target shown by Cloudflare (proxied)
+
 See `backend/wrangler.jsonc` and `frontend/.env.example` for deployment domains.
