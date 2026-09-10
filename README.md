@@ -36,3 +36,16 @@ The local UI runs at `http://localhost:5173` and the API at `http://localhost:87
 5. Set the `slyxup.online` catch-all Email Routing rule to the `slyxup-email` Worker.
 
 See `backend/wrangler.jsonc` and `frontend/.env.example` for deployment domains.
+
+## Move Email Routing to another domain
+
+Replace `newdomain.com` with the Cloudflare zone you want to use:
+
+```bash
+wrangler email routing enable newdomain.com
+wrangler email routing rules update newdomain.com catch-all \
+  --enabled true --action-type worker --action-value slyxup-email
+wrangler email sending enable newdomain.com
+```
+
+Then update `MAIL_DOMAIN` in `backend/wrangler.jsonc`, deploy the backend, and add each sender in Brevo. Update `FRONTEND_ORIGIN` if the web app also moves. If the API hostname moves, update `frontend/.env.production` before rebuilding the frontend.
