@@ -20,7 +20,8 @@ export async function sha256(value: string): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export async function verifyPassword(password: string, encoded: string): Promise<boolean> {
+export async function verifyPassword(password: string, encoded: string | undefined): Promise<boolean> {
+  if (!encoded) return false;
   const [algorithm, iterationsRaw, salt, expected] = encoded.split('$');
   if (algorithm !== 'pbkdf2' || !iterationsRaw || !salt || !expected) return false;
   const iterations = Number(iterationsRaw);
@@ -40,6 +41,13 @@ export async function createSession(db: D1Database, email: string): Promise<stri
   await db.prepare('INSERT INTO sessions (id, token_hash, email, expires_at) VALUES (?, ?, ?, ?)')
     .bind(crypto.randomUUID(), tokenHash, email, expiresAt).run();
   return token;
+}
+
+export async function checkRateLimit(kv: KVNamespace, key: string, limit: number, windowSeconds: number): Promise<boolean> {
+  const current = Number((await kv.get(key)) ?? '0');
+  if (current >= limit) return false;
+  await kv.put(key, String(current + 1), { expirationTtl: windowSeconds });
+  return true;
 }
 
 export function sessionCookie(token: string, maxAge = 60 * 60 * 24 * 30): string {

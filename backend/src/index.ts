@@ -2,7 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { deleteCookie } from 'hono/cookie';
 import { z } from 'zod';
-import { clearSessionCookie, createSession, getCookie, requireSession, type MailContext, type MailEnv, sha256, verifyPassword } from './auth';
+import { checkRateLimit, clearSessionCookie, createSession, getCookie, requireSession, type MailContext, type MailEnv, sha256, verifyPassword } from './auth';
 import { escapeHtml, parseInbound, sendWithBrevo } from './email';
 
 const app = new Hono<{ Bindings: MailEnv; Variables: { userEmail: string } }>();
@@ -24,6 +24,12 @@ app.use('*', async (c, next) => {
 });
 
 app.get('/health', (c) => c.json({ ok: true, service: 'slyxup-email' }));
+
+app.use('/api/auth/login', async (c, next) => {
+  const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
+  if (!(await checkRateLimit(c.env.RATE_LIMIT, `login:${ip}`, 10, 300))) return c.json({ ok: false, error: 'Too many sign-in attempts. Try again later.' }, 429);
+  await next();
+});
 
 app.post('/api/auth/login', zValidator('json', z.object({ email: z.string().email(), password: z.string().min(1).max(200) })), async (c) => {
   const { email, password } = c.req.valid('json');
@@ -134,6 +140,8 @@ app.delete('/api/messages/:id', requireSession, async (c) => {
 
 const sendSchema = z.object({ fromAliasId: z.string().min(1), to: z.array(z.string().email()).min(1).max(50), cc: z.array(z.string().email()).max(50).optional(), subject: z.string().max(500).default('(no subject)'), text: z.string().max(100000), replyToMessageId: z.string().optional() });
 app.post('/api/messages/send', requireSession, zValidator('json', sendSchema), async (c) => {
+  const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
+  if (!(await checkRateLimit(c.env.RATE_LIMIT, `send:${ip}`, 30, 3600))) return c.json({ ok: false, error: 'Sending limit reached. Try again later.' }, 429);
   const input = c.req.valid('json');
   const alias = await c.env.DB.prepare('SELECT id, local_part, display_name, enabled, created_at FROM aliases WHERE id = ? AND enabled = 1').bind(input.fromAliasId).first<AliasRow>();
   if (!alias) return c.json({ ok: false, error: 'Choose an enabled sender alias' }, 400);
