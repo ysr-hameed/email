@@ -1,6 +1,6 @@
-# SlyxUp Mail
+# SMail
 
-Private Gmail-style mailbox for `slyxup.com`.
+Private Gmail-style mailbox for `slyxup.com`, branded as SMail.
 
 ## Structure
 

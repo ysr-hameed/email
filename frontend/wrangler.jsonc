@@ -13,5 +13,5 @@
     "pattern": "email.slyxup.com",
     "custom_domain": true
   }],
-  "vars": { "APP_NAME": "SlyxUp Mail" }
+  "vars": { "APP_NAME": "SMail" }
 }

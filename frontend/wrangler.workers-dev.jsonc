@@ -10,5 +10,5 @@
     "not_found_handling": "single-page-application"
   },
   "workers_dev": true,
-  "vars": { "APP_NAME": "SlyxUp Mail" }
+  "vars": { "APP_NAME": "SMail" }
 }
