@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "account_id": "82c4f4b23dd3b5e81502a03d73cfe8a3",
-  "name": "mail-slyxup-com",
+  "account_id": "ed01399ae5f7a46697e0802e4eaef6a9",
+  "name": "email-frontend",
   "main": "./worker.ts",
   "compatibility_date": "2026-09-10",
   "assets": {
