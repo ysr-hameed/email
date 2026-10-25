@@ -37,6 +37,13 @@ export async function parseInbound(raw: ReadableStream): Promise<ParsedInbound> 
   };
 }
 
+export interface OutboundAttachment {
+  filename: string;
+  contentType: string;
+  base64: string;
+  size: number;
+}
+
 export async function sendWithBrevo(env: MailEnv, input: {
   from: string;
   fromName?: string;
@@ -46,6 +53,7 @@ export async function sendWithBrevo(env: MailEnv, input: {
   text: string;
   html: string;
   replyTo?: string;
+  attachments?: OutboundAttachment[];
 }): Promise<string> {
   if (!env.BREVO_API_KEY) throw new Error('Brevo is not configured');
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -59,6 +67,7 @@ export async function sendWithBrevo(env: MailEnv, input: {
       textContent: input.text,
       htmlContent: input.html,
       replyTo: input.replyTo ? { email: input.replyTo } : undefined,
+      attachment: input.attachments?.map((item) => ({ name: item.filename, content: item.base64 })),
     }),
   });
   if (!response.ok) {

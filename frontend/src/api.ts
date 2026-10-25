@@ -7,9 +7,10 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, { credentials: 'include', ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) } });
+  const isForm = typeof FormData !== 'undefined' && init?.body instanceof FormData;
+  const response = await fetch(`${API_URL}${path}`, { credentials: 'include', ...init, headers: { ...(isForm ? {} : { 'Content-Type': 'application/json' }), ...(init?.headers ?? {}) } });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new ApiError(body.error || `Request failed (${response.status})`, response.status);
+  if (!response.ok) throw new ApiError((body as { error?: string }).error || `Request failed (${response.status})`, response.status);
   return body as T;
 }
 
@@ -24,7 +25,21 @@ export const api = {
   createAlias: (localPart: string, displayName: string) => request<{ ok: true; alias: MailAlias }>('/api/aliases', { method: 'POST', body: JSON.stringify({ localPart, displayName }) }),
   updateAlias: (id: string, input: { enabled?: boolean; displayName?: string | null }) => request<{ ok: true; alias: MailAlias }>(`/api/aliases/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
   deleteAlias: (id: string) => request<{ ok: true }>(`/api/aliases/${id}`, { method: 'DELETE' }),
-  send: (input: { fromAliasId: string; to: string[]; cc?: string[]; subject: string; text: string; replyToMessageId?: string }) => request<{ ok: true; id: string; threadId: string }>('/api/messages/send', { method: 'POST', body: JSON.stringify(input) }),
+  send: (input: { fromAliasId: string; to: string[]; cc?: string[]; subject: string; text: string; replyToMessageId?: string; files?: File[] }) => {
+    if (input.files?.length) {
+      const form = new FormData();
+      form.append('fromAliasId', input.fromAliasId);
+      form.append('to', input.to.join(', '));
+      if (input.cc?.length) form.append('cc', input.cc.join(', '));
+      form.append('subject', input.subject);
+      form.append('text', input.text);
+      if (input.replyToMessageId) form.append('replyToMessageId', input.replyToMessageId);
+      for (const file of input.files) form.append('attachments', file, file.name);
+      return request<{ ok: true; id: string; threadId: string; attachmentCount?: number }>('/api/messages/send', { method: 'POST', body: form });
+    }
+    const { files: _ignored, ...json } = input;
+    return request<{ ok: true; id: string; threadId: string; attachmentCount?: number }>('/api/messages/send', { method: 'POST', body: JSON.stringify(json) });
+  },
 };
 
 export interface Attachment { id: string; filename: string; content_type: string; size: number; url: string }

@@ -138,11 +138,54 @@ app.delete('/api/messages/:id', requireSession, async (c) => {
   return c.json({ ok: true });
 });
 
-const sendSchema = z.object({ fromAliasId: z.string().min(1), to: z.array(z.string().email()).min(1).max(50), cc: z.array(z.string().email()).max(50).optional(), subject: z.string().max(500).default('(no subject)'), text: z.string().max(100000), replyToMessageId: z.string().optional() });
-app.post('/api/messages/send', requireSession, zValidator('json', sendSchema), async (c) => {
+const sendSchema = z.object({ fromAliasId: z.string().min(1).max(100), to: z.array(z.string().email()).min(1).max(50), cc: z.array(z.string().email()).max(50).optional(), subject: z.string().max(500).default('(no subject)'), text: z.string().max(100000), replyToMessageId: z.string().min(1).max(100).optional() });
+
+const MAX_SEND_ATTACHMENTS = 5;
+const MAX_SEND_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_SEND_TOTAL_BYTES = 20 * 1024 * 1024;
+
+app.post('/api/messages/send', requireSession, async (c) => {
   const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
   if (!(await checkRateLimit(c.env.RATE_LIMIT, `send:${ip}`, 30, 3600))) return c.json({ ok: false, error: 'Sending limit reached. Try again later.' }, 429);
-  const input = c.req.valid('json');
+  const contentType = c.req.header('content-type') ?? '';
+  let input: z.infer<typeof sendSchema>;
+  let uploadFiles: File[] = [];
+  try {
+    if (contentType.includes('multipart/form-data')) {
+      const form = await c.req.parseBody();
+      const pickText = (value: unknown): string => (typeof value === 'string' ? value : '');
+      const toRaw = pickText(form['to']);
+      const ccRaw = pickText(form['cc']);
+      const parsed = sendSchema.parse({
+        fromAliasId: pickText(form['fromAliasId']),
+        to: toRaw.split(',').map((value) => value.trim()).filter(Boolean),
+        cc: ccRaw ? ccRaw.split(',').map((value) => value.trim()).filter(Boolean) : undefined,
+        subject: pickText(form['subject']),
+        text: pickText(form['text']),
+        replyToMessageId: pickText(form['replyToMessageId']) || undefined,
+      });
+      input = parsed;
+      const rawUploads = form['attachments'];
+      if (rawUploads) uploadFiles = (Array.isArray(rawUploads) ? rawUploads : [rawUploads]).filter((item): item is File => item instanceof File && item.size > 0);
+    } else {
+      input = sendSchema.parse(await c.req.json());
+    }
+  } catch {
+    return c.json({ ok: false, error: 'Invalid message. Check recipients and try again.' }, 400);
+  }
+  if (uploadFiles.length > MAX_SEND_ATTACHMENTS) return c.json({ ok: false, error: `Attach up to ${MAX_SEND_ATTACHMENTS} files` }, 400);
+  const validatedUploads: Array<{ filename: string; contentType: string; bytes: ArrayBuffer; size: number }> = [];
+  let totalBytes = 0;
+  for (const file of uploadFiles) {
+    const filename = sanitizeAttachmentName((file as File & { name?: string }).name || 'attachment');
+    const size = file.size;
+    if (size <= 0) return c.json({ ok: false, error: `“${filename}” is empty` }, 400);
+    if (size > MAX_SEND_FILE_BYTES) return c.json({ ok: false, error: `“${filename}” exceeds the 10 MB per-file limit` }, 400);
+    totalBytes += size;
+    if (totalBytes > MAX_SEND_TOTAL_BYTES) return c.json({ ok: false, error: 'Attachments exceed the 20 MB total limit' }, 400);
+    const bytes = await file.arrayBuffer();
+    validatedUploads.push({ filename, contentType: file.type || 'application/octet-stream', bytes, size: bytes.byteLength });
+  }
   const alias = await c.env.DB.prepare('SELECT id, local_part, display_name, enabled, created_at FROM aliases WHERE id = ? AND enabled = 1').bind(input.fromAliasId).first<AliasRow>();
   if (!alias) return c.json({ ok: false, error: 'Choose an enabled sender alias' }, 400);
   const from = `${alias.local_part}@${c.env.MAIL_DOMAIN}`;
@@ -152,11 +195,20 @@ app.post('/api/messages/send', requireSession, zValidator('json', sendSchema), a
   const subject = input.subject.trim() || '(no subject)';
   const html = `<div style="font-family:Arial,sans-serif;white-space:pre-wrap">${escapeHtml(input.text)}</div>`;
   try {
-    const providerId = await sendWithBrevo(c.env, { from, fromName: alias.display_name ?? from, to: input.to, cc: input.cc, subject, text: input.text, html, replyTo: from });
+    const providerId = await sendWithBrevo(c.env, {
+      from, fromName: alias.display_name ?? from, to: input.to, cc: input.cc, subject, text: input.text, html, replyTo: from,
+      attachments: validatedUploads.map((item) => ({ filename: item.filename, contentType: item.contentType, size: item.size, base64: arrayBufferToBase64(item.bytes) })),
+    });
     await c.env.DB.prepare('INSERT OR IGNORE INTO threads (id, subject) VALUES (?, ?)').bind(threadId, subject).run();
     const id = crypto.randomUUID();
     await c.env.DB.prepare('INSERT INTO messages (id, thread_id, direction, sender, recipients_json, cc_json, subject, text_body, html_body, message_id, in_reply_to, alias_id, status, sent_at, headers_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(id, threadId, 'outbound', from, JSON.stringify(input.to), JSON.stringify(input.cc ?? []), subject, input.text, html, messageId, reply?.message_id ?? null, alias.id, 'sent', new Date().toISOString(), JSON.stringify({ 'x-provider-id': providerId })).run();
-    return c.json({ ok: true, id, threadId });
+    for (const item of validatedUploads) {
+      const attachmentId = crypto.randomUUID();
+      const objectKey = `messages/${id}/${attachmentId}-${item.filename}`;
+      await c.env.ATTACHMENTS.put(objectKey, item.bytes, { httpMetadata: { contentType: item.contentType } });
+      await c.env.DB.prepare('INSERT INTO attachments (id, message_id, filename, content_type, size, object_key) VALUES (?, ?, ?, ?, ?, ?)').bind(attachmentId, id, item.filename, item.contentType, item.size, objectKey).run();
+    }
+    return c.json({ ok: true, id, threadId, attachmentCount: validatedUploads.length });
   } catch (error) {
     return c.json({ ok: false, error: error instanceof Error ? error.message : 'Email could not be sent' }, 502);
   }
@@ -216,4 +268,18 @@ function messageResponse(row: MessageRow) {
 
 function parseJson<T>(value: string, fallback: T): T {
   try { return JSON.parse(value) as T; } catch { return fallback; }
+}
+
+function sanitizeAttachmentName(raw: string): string {
+  const base = raw.split(/[\\/]/).pop()?.trim() || 'attachment';
+  const cleaned = base.replace(/[\0-\x1f\x7f]+/g, '').replace(/["<>|:?*]+/g, '_').slice(0, 180);
+  return cleaned || 'attachment';
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  return btoa(binary);
 }

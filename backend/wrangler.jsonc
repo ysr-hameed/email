@@ -25,7 +25,7 @@
   }],
   "kv_namespaces": [{
     "binding": "RATE_LIMIT",
-    "id": "690543939ed6489fbaf4ff1f16e4c8ea"
+    "id": "1e2295daff41414fa4f18c9c1c57d40d"
   }],
   "routes": [{
     "pattern": "mail-api.slyxup.com",
